@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111418">
+<title>Garage Lights</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #111418; --card: #1b2027; --line: #2a313b; --text: #e8ecf1; --muted: #8b95a3;
+    --accent: #4da3ff; --ok: #3ccf7a; --warn: #f3b33d; --bad: #ef5d5d;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+  main { max-width: 520px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  h2 { font-size: 17px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 12px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row.split { justify-content: space-between; flex-wrap: nowrap; }
+  .grow { flex: 1; min-width: 0; }
+  button { font: inherit; color: var(--text); background: #262d37; border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .4; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #04121f; font-weight: 600; }
+  button.small { padding: 6px 10px; font-size: 14px; }
+  .big { flex: 1; padding: 14px; font-weight: 600; font-size: 17px; }
+  .presets button { flex: 1 1 30%; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.connected { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.connecting { background: var(--warn); animation: pulse 1s infinite alternate; }
+  @keyframes pulse { to { opacity: .3; } }
+  .name { display: flex; gap: 8px; align-items: center; }
+  .devname { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* switch */
+  .switch { position: relative; width: 52px; height: 32px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch span { position: absolute; inset: 0; background: #3a424d; border-radius: 16px; transition: .2s; }
+  .switch span::after { content: ""; position: absolute; width: 26px; height: 26px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + span { background: var(--ok); }
+  .switch input:checked + span::after { transform: translateX(20px); }
+  .switch input:disabled + span { opacity: .4; }
+  .controls[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+  .controls { display: grid; gap: 12px; }
+  input[type=color] { width: 56px; height: 44px; border: 1px solid var(--line); border-radius: 10px; background: none; padding: 2px; flex: none; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+  .swatches button { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  .bri-val { width: 48px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  details { border-top: 1px solid var(--line); padding-top: 10px; }
+  summary { color: var(--muted); font-size: 14px; cursor: pointer; }
+  .settings { display: grid; gap: 10px; margin-top: 10px; font-size: 14px; }
+  .settings label { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  select, .settings input[type=number] { font: inherit; color: var(--text); background: #262d37; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 60%; }
+  .banner { background: #3a2a10; border: 1px solid #6b4d16; color: #ffd893; border-radius: var(--radius); padding: 12px 14px; font-size: 14px; }
+  #log { font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--muted); max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-all; margin: 8px 0 0; }
+  #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); transform: translateX(-50%);
+    background: #2c333e; border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; font-size: 14px;
+    max-width: calc(100% - 32px); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Garage Lights</h1>
+    <div class="sub">Tap Connect on each light. Keep this page open while you use it.</div>
+  </header>
+
+  <div id="nobt" class="banner" hidden>
+    This browser has no Web Bluetooth. On iPhone, open this page in <b>Bluefy</b>. On a computer or Android phone, use Chrome or Edge over HTTPS or on localhost.
+  </div>
+
+  <section class="card" id="all">
+    <div class="row">
+      <button class="big" id="allOn">All on</button>
+      <button class="big" id="allOff">All off</button>
+    </div>
+    <div class="row presets">
+      <button data-preset="work">Work light</button>
+      <button data-preset="dim">Dim</button>
+      <button data-preset="party">Party</button>
+    </div>
+  </section>
+
+  <div id="lights" style="display:grid;gap:14px"></div>
+
+  <details class="card">
+    <summary>Log</summary>
+    <pre id="log"></pre>
+  </details>
+</main>
+<div id="toast"></div>
+
+<template id="cardTpl">
+  <section class="card light">
+    <div class="row split">
+      <div class="grow">
+        <div class="name"><span class="dot"></span><h2 class="label"></h2></div>
+        <div class="devname">Not connected</div>
+      </div>
+      <label class="switch"><input type="checkbox" class="power"><span></span></label>
+    </div>
+    <div class="controls">
+      <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
+        <input type="color" class="color">
+        <div class="swatches"></div>
+      </div>
+      <div class="row" style="flex-wrap:nowrap">
+        <span class="sub">Brightness</span>
+        <input type="range" class="bri" min="1" max="100">
+        <span class="bri-val"></span>
+      </div>
+    </div>
+    <div class="row">
+      <button class="primary connect">Connect</button>
+      <button class="small choose">Choose device…</button>
+    </div>
+    <details>
+      <summary>Protocol settings (for testing)</summary>
+      <div class="settings"></div>
+    </details>
+  </section>
+</template>
+
+<script>
+'use strict';
+
+// ---------- constants ----------
+const GOVEE_SVC   = '00010203-0405-0607-0809-0a0b0c0d1910';
+const GOVEE_WRITE = '00010203-0405-0607-0809-0a0b0c0d2b11';
+const ELK_SVC     = '0000fff0-0000-1000-8000-00805f9b34fb';
+const ELK_WRITE   = '0000fff3-0000-1000-8000-00805f9b34fb';
+const ALL_SERVICES = [GOVEE_SVC, ELK_SVC];
+const WRITE_INTERVAL_MS = 50;
+const SWATCHES = ['#ffffff', '#ffb46b', '#ff0000', '#ff7a00', '#ffe600', '#00ff40', '#00e5ff', '#0040ff', '#a000ff', '#ff00b4'];
+
+// ---------- helpers ----------
+const $ = (sel, root = document) => root.querySelector(sel);
+const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(' ');
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+
+const store = {
+  get(key, fallback) {
+    try { const v = localStorage.getItem('garage:' + key); return v == null ? fallback : JSON.parse(v); }
+    catch { return fallback; }
+  },
+  set(key, val) { try { localStorage.setItem('garage:' + key, JSON.stringify(val)); } catch {} },
+};
+
+function log(msg) {
+  const el = $('#log');
+  const t = new Date().toLocaleTimeString([], { hour12: false });
+  el.textContent = `${t} ${msg}\n` + el.textContent.slice(0, 8000);
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ---------- base driver ----------
+// Each driver exposes: connect(), power(on), color(r,g,b), brightness(pct), disconnect()
+class Light {
+  constructor(id, label) {
+    this.id = id;
+    this.label = label;
+    this.device = null;
+    this.char = null;
+    this.status = 'disconnected';
+    this.queue = new Map();      // key -> bytes; only the latest value per key is kept
+    this.busy = false;
+    this.pump = null;
+    this.wantConnected = false;
+    this.retries = 0;
+    this.listeners = new Set();
+    this.settings = Object.assign({}, this.defaultSettings(), store.get('settings:' + id, {}));
+    this.onDisc = () => this.handleDisconnect();
+  }
+
+  defaultSettings() { return {}; }
+  saveSettings() { store.set('settings:' + this.id, this.settings); }
+  onChange(fn) { this.listeners.add(fn); }
+  emit() { this.listeners.forEach(fn => fn(this)); }
+  setStatus(s) { this.status = s; this.emit(); }
+  get connected() { return this.status === 'connected'; }
+
+  setDevice(dev) {
+    if (this.device && this.device !== dev) this.device.removeEventListener('gattserverdisconnected', this.onDisc);
+    if (this.device !== dev) dev.addEventListener('gattserverdisconnected', this.onDisc);
+    this.device = dev;
+    store.set('devname:' + this.id, dev.name || '');
+  }
+
+  async connect({ pick = false } = {}) {
+    if (!navigator.bluetooth) throw new Error('Web Bluetooth is not available in this browser');
+    if (pick || !this.device) {
+      const dev = await navigator.bluetooth.requestDevice({ filters: this.filters, optionalServices: ALL_SERVICES });
+      this.setDevice(dev);
+    }
+    this.wantConnected = true;
+    this.setStatus('connecting');
+    try {
+      const server = await this.device.gatt.connect();
+      const svc = await server.getPrimaryService(this.serviceUuid);
+      this.char = await svc.getCharacteristic(this.writeUuid);
+      this.retries = 0;
+      this.queue.clear();
+      this.startPump();
+      this.setStatus('connected');
+      log(`${this.label}: connected (${this.device.name || 'unnamed'})`);
+      this.afterConnect();
+    } catch (e) {
+      this.char = null;
+      this.setStatus('disconnected');
+      throw e;
+    }
+  }
+
+  disconnect() {
+    this.wantConnected = false;
+    if (this.device && this.device.gatt.connected) this.device.gatt.disconnect();
+    else this.handleDisconnect();
+  }
+
+  handleDisconnect() {
+    const wasConnected = this.status !== 'disconnected';
+    this.char = null;
+    this.stopPump();
+    this.beforeDisconnect();
+    this.setStatus('disconnected');
+    if (wasConnected) log(`${this.label}: disconnected`);
+    if (this.wantConnected && this.retries < 3) {
+      this.retries++;
+      const delay = 1000 * this.retries;
+      log(`${this.label}: reconnecting in ${delay / 1000}s (try ${this.retries}/3)`);
+      setTimeout(() => {
+        if (this.wantConnected && this.status === 'disconnected') {
+          this.connect().catch(e => log(`${this.label}: reconnect failed: ${e.message}`));
+        }
+      }, delay);
+    } else if (this.wantConnected) {
+      this.wantConnected = false;
+      toast(`${this.label} dropped. Tap Reconnect.`);
+    }
+  }
+
+  afterConnect() {}
+  beforeDisconnect() {}
+
+  // Queue a write. Re-queuing the same key replaces the pending value and moves it to the back.
+  send(key, bytes) {
+    if (!this.connected) return false;
+    this.queue.delete(key);
+    this.queue.set(key, bytes);
+    return true;
+  }
+
+  startPump() {
+    this.stopPump();
+    this.pump = setInterval(() => this.tick(), WRITE_INTERVAL_MS);
+  }
+  stopPump() {
+    clearInterval(this.pump);
+    this.pump = null;
+    this.queue.clear();
+    this.busy = false;
+  }
+
+  async tick() {
+    if (this.busy || !this.char || this.queue.size === 0) return;
+    const [key, bytes] = this.queue.entries().next().value;
+    this.queue.delete(key);
+    this.busy = true;
+    try {
+      const c = this.char;
+      if (c.properties.writeWithoutResponse && c.writeValueWithoutResponse) await c.writeValueWithoutResponse(bytes);
+      else await c.writeValue(bytes);
+      if (key !== 'keepalive') log(`${this.label} ${key}: ${hex(bytes)}`);
+    } catch (e) {
+      log(`${this.label} ${key} write failed: ${e.message}`);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  // Party preset: overridden per brand
+  party() {}
+}
+
+// ---------- Govee (H607C) ----------
+// 20-byte packets: 0x33, cmd, args..., zero padding, byte 19 = XOR of bytes 0..18
+function goveePacket(bytes) {
+  const p = new Uint8Array(20);
+  p.set(bytes.slice(0, 19));
+  let x = 0;
+  for (let i = 0; i < 19; i++) x ^= p[i];
+  p[19] = x;
+  return p;
+}
+
+class GoveeLight extends Light {
+  constructor() {
+    super('govee', 'Govee');
+    this.filters = [{ namePrefix: 'Govee_' }];
+    this.serviceUuid = GOVEE_SVC;
+    this.writeUuid = GOVEE_WRITE;
+    this.keepalive = null;
+  }
+  defaultSettings() { return { colorMode: '02', brightMax: 255, partyColor: '#a000ff' }; }
+  settingsSchema() {
+    return [
+      { key: 'colorMode', label: 'Color command', options: [['02', '33 05 02 (older)'], ['0D', '33 05 0D (variant)'], ['15', '33 05 15 (segmented)']] },
+      { key: 'brightMax', label: 'Brightness range', options: [[255, '0–255'], [100, '0–100']], number: true },
+      { key: 'partyColor', label: 'Party color', color: true },
+    ];
+  }
+  afterConnect() {
+    clearInterval(this.keepalive);
+    this.keepalive = setInterval(() => this.send('keepalive', goveePacket([0xAA, 0x01])), 2000);
+  }
+  beforeDisconnect() { clearInterval(this.keepalive); this.keepalive = null; }
+
+  power(on) { return this.send('power', goveePacket([0x33, 0x01, on ? 1 : 0])); }
+  color(r, g, b) {
+    let body;
+    switch (this.settings.colorMode) {
+      case '0D': body = [0x33, 0x05, 0x0D, r, g, b]; break;
+      case '15': body = [0x33, 0x05, 0x15, 0x01, r, g, b, 0, 0, 0, 0, 0, 0xFF, 0x7F]; break;
+      default:   body = [0x33, 0x05, 0x02, r, g, b];
+    }
+    return this.send('color', goveePacket(body));
+  }
+  brightness(pct) {
+    const v = Math.round(clamp(pct, 0, 100) / 100 * Number(this.settings.brightMax));
+    return this.send('brightness', goveePacket([0x33, 0x04, v]));
+  }
+  party(state) {
+    const [r, g, b] = hexToRgb(this.settings.partyColor);
+    state.color = this.settings.partyColor;
+    state.bri = 100;
+    this.power(true); this.color(r, g, b); this.brightness(100);
+  }
+}
+
+// ---------- LED Lights (TG201A, ELK-BLEDOM style) ----------
+// 9-byte packets 7E ... EF, no checksum, no keep-alive.
+const ELK_VARIANTS = {
+  // Bytes exactly as in the spec
+  spec: {
+    on:     () => [0x7E, 0x00, 0x04, 0xF0, 0x00, 0x01, 0xFF, 0x00, 0xEF],
+    off:    () => [0x7E, 0x00, 0x04, 0x00, 0x00, 0x00, 0xFF, 0x00, 0xEF],
+    color:  (r, g, b) => [0x7E, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xEF],
+    bright: v => [0x7E, 0x00, 0x01, v, 0x00, 0x00, 0x00, 0x00, 0xEF],
+    effect: m => [0x7E, 0x00, 0x03, m, 0x03, 0x00, 0x00, 0x00, 0xEF],
+    speed:  s => [0x7E, 0x00, 0x02, s, 0x00, 0x00, 0x00, 0x00, 0xEF],
+  },
+  // The length-byte form many ELK-BLEDOM projects use, as a fallback
+  alt: {
+    on:     () => [0x7E, 0x04, 0x04, 0xF0, 0x00, 0x01, 0xFF, 0x00, 0xEF],
+    off:    () => [0x7E, 0x04, 0x04, 0x00, 0x00, 0x00, 0xFF, 0x00, 0xEF],
+    color:  (r, g, b) => [0x7E, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xEF],
+    bright: v => [0x7E, 0x04, 0x01, v, 0x01, 0xFF, 0xFF, 0x00, 0xEF],
+    effect: m => [0x7E, 0x05, 0x03, m, 0x03, 0xFF, 0xFF, 0x00, 0xEF],
+    speed:  s => [0x7E, 0x04, 0x02, s, 0xFF, 0xFF, 0xFF, 0x00, 0xEF],
+  },
+};
+const ELK_EFFECTS = [
+  [0x87, 'Jump: R/G/B'], [0x88, 'Jump: 7 colors'], [0x93, 'Fade: R/G/B'], [0x94, 'Fade: 7 colors'],
+];
+
+class ElkLight extends Light {
+  constructor() {
+    super('elk', 'LED Lights');
+    this.filters = [{ namePrefix: 'LED Lights' }];
+    this.serviceUuid = ELK_SVC;
+    this.writeUuid = ELK_WRITE;
+  }
+  defaultSettings() { return { variant: 'spec', partyEffect: 0x88, partySpeed: 50 }; }
+  settingsSchema() {
+    return [
+      { key: 'variant', label: 'Packet format', options: [['spec', '7E 00 … (spec)'], ['alt', '7E len … (alt)']] },
+      { key: 'partyEffect', label: 'Party effect', options: ELK_EFFECTS.map(([v, n]) => [v, n]), number: true },
+      { key: 'partySpeed', label: 'Party speed (0–100)', range: [0, 100] },
+    ];
+  }
+  get v() { return ELK_VARIANTS[this.settings.variant] || ELK_VARIANTS.spec; }
+  pkt(arr) { return new Uint8Array(arr); }
+
+  power(on) { return this.send('power', this.pkt(on ? this.v.on() : this.v.off())); }
+  color(r, g, b) { this.queue.delete('effect'); this.queue.delete('speed'); return this.send('color', this.pkt(this.v.color(r, g, b))); }
+  brightness(pct) { return this.send('brightness', this.pkt(this.v.bright(Math.round(clamp(pct, 0, 100))))); }
+  effect(mode, speed) {
+    this.queue.delete('color');
+    this.send('effect', this.pkt(this.v.effect(mode)));
+    return this.send('speed', this.pkt(this.v.speed(clamp(Number(speed), 0, 100))));
+  }
+  party(state) {
+    state.bri = 100;
+    this.power(true); this.brightness(100);
+    this.effect(Number(this.settings.partyEffect), this.settings.partySpeed);
+  }
+}
+
+// ---------- UI ----------
+const lights = [new GoveeLight(), new ElkLight()];
+const state = {};   // per-light UI state: { on, color, bri }
+lights.forEach(l => { state[l.id] = Object.assign({ on: false, color: '#ffffff', bri: 100 }, store.get('state:' + l.id, {})); });
+const saveState = id => store.set('state:' + id, state[id]);
+const ui = {};
+
+function buildCard(light) {
+  const node = $('#cardTpl').content.firstElementChild.cloneNode(true);
+  const els = {
+    root: node, dot: $('.dot', node), devname: $('.devname', node), power: $('.power', node),
+    color: $('.color', node), bri: $('.bri', node), briVal: $('.bri-val', node),
+    controls: $('.controls', node), connect: $('.connect', node), choose: $('.choose', node),
+  };
+  $('.label', node).textContent = light.label;
+  ui[light.id] = els;
+
+  const sw = $('.swatches', node);
+  SWATCHES.forEach(c => {
+    const b = document.createElement('button');
+    b.style.background = c;
+    b.setAttribute('aria-label', 'Color ' + c);
+    b.addEventListener('click', () => setColor(light, c, true));
+    sw.appendChild(b);
+  });
+
+  els.power.addEventListener('change', () => setPower(light, els.power.checked));
+  els.color.addEventListener('input', () => setColor(light, els.color.value, false));
+  els.color.addEventListener('change', () => setColor(light, els.color.value, true));
+  els.bri.addEventListener('input', () => setBrightness(light, Number(els.bri.value), false));
+  els.bri.addEventListener('change', () => setBrightness(light, Number(els.bri.value), true));
+
+  els.connect.addEventListener('click', () => {
+    if (light.connected || light.status === 'connecting') { light.disconnect(); return; }
+    doConnect(light, false);
+  });
+  els.choose.addEventListener('click', () => doConnect(light, true));
+
+  buildSettings(light, $('.settings', node));
+  light.onChange(() => render(light));
+  $('#lights').appendChild(node);
+  render(light);
+}
+
+function buildSettings(light, box) {
+  light.settingsSchema().forEach(f => {
+    const label = document.createElement('label');
+    const span = document.createElement('span');
+    span.textContent = f.label;
+    label.appendChild(span);
+    let input;
+    if (f.options) {
+      input = document.createElement('select');
+      f.options.forEach(([val, text]) => {
+        const o = document.createElement('option');
+        o.value = String(val); o.textContent = text;
+        input.appendChild(o);
+      });
+      input.value = String(light.settings[f.key]);
+    } else if (f.color) {
+      input = document.createElement('input');
+      input.type = 'color';
+      input.value = light.settings[f.key];
+    } else {
+      input = document.createElement('input');
+      input.type = 'number'; input.min = f.range[0]; input.max = f.range[1];
+      input.value = light.settings[f.key];
+    }
+    input.addEventListener('change', () => {
+      let v = input.value;
+      if (f.number || f.range) v = Number(v);
+      if (f.range) v = clamp(v, f.range[0], f.range[1]);
+      light.settings[f.key] = v;
+      light.saveSettings();
+      log(`${light.label}: ${f.key} = ${v}`);
+    });
+    label.appendChild(input);
+    box.appendChild(label);
+  });
+  const test = document.createElement('button');
+  test.className = 'small';
+  test.textContent = 'Send test: on + current color';
+  test.addEventListener('click', () => {
+    if (!light.connected) return toast(`${light.label} is not connected`);
+    light.power(true);
+    light.color(...hexToRgb(state[light.id].color));
+  });
+  box.appendChild(test);
+}
+
+function render(light) {
+  const els = ui[light.id], s = state[light.id];
+  els.dot.className = 'dot ' + light.status;
+  const devName = light.device ? light.device.name : store.get('devname:' + light.id, '');
+  els.devname.textContent =
+    light.status === 'connected' ? (devName || 'Connected') :
+    light.status === 'connecting' ? 'Connecting…' :
+    devName ? `${devName} · not connected` : 'Not connected';
+  els.power.checked = s.on;
+  els.power.disabled = !light.connected;
+  els.color.value = s.color;
+  els.bri.value = s.bri;
+  els.briVal.textContent = s.bri + '%';
+  els.controls.setAttribute('aria-disabled', String(!light.connected));
+  els.connect.textContent =
+    light.connected ? 'Disconnect' : light.status === 'connecting' ? 'Cancel' : light.device ? 'Reconnect' : 'Connect';
+  els.connect.classList.toggle('primary', !light.connected);
+  els.choose.hidden = light.connected || light.status === 'connecting';
+}
+
+async function doConnect(light, pick) {
+  try {
+    await light.connect({ pick });
+  } catch (e) {
+    if (e.name === 'NotFoundError' && /cancel/i.test(e.message)) return;   // user closed the picker
+    log(`${light.label}: connect failed: ${e.name}: ${e.message}`);
+    toast(`${light.label}: ${e.message}`);
+  }
+}
+
+function setPower(light, on) {
+  state[light.id].on = on;
+  saveState(light.id);
+  light.power(on);
+  render(light);
+}
+function setColor(light, color, save) {
+  state[light.id].color = color;
+  if (!state[light.id].on) state[light.id].on = true;
+  if (save) saveState(light.id);
+  light.color(...hexToRgb(color));
+  render(light);
+}
+function setBrightness(light, pct, save) {
+  state[light.id].bri = pct;
+  ui[light.id].briVal.textContent = pct + '%';
+  if (save) saveState(light.id);
+  light.brightness(pct);
+}
+
+function connectedOrWarn() {
+  const on = lights.filter(l => l.connected);
+  const off = lights.filter(l => !l.connected);
+  if (off.length) toast(`Not connected: ${off.map(l => l.label).join(', ')}`);
+  return on;
+}
+
+const PRESETS = {
+  work: (l, s) => { s.color = '#ffffff'; s.bri = 100; l.power(true); l.color(255, 255, 255); l.brightness(100); },
+  dim:  (l, s) => { s.color = '#ffb46b'; s.bri = 20;  l.power(true); l.color(255, 180, 107); l.brightness(20); },
+  party: (l, s) => l.party(s),
+};
+
+function applyPreset(name) {
+  connectedOrWarn().forEach(l => {
+    const s = state[l.id];
+    s.on = true;
+    PRESETS[name](l, s);
+    saveState(l.id);
+    render(l);
+  });
+}
+
+function allPower(on) {
+  connectedOrWarn().forEach(l => setPower(l, on));
+}
+
+// ---------- boot ----------
+lights.forEach(buildCard);
+$('#allOn').addEventListener('click', () => allPower(true));
+$('#allOff').addEventListener('click', () => allPower(false));
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
+
+if (!navigator.bluetooth) {
+  $('#nobt').hidden = false;
+  log('navigator.bluetooth is missing');
+} else if (navigator.bluetooth.getDevices) {
+  // Chrome (with permissions backend) can hand back previously granted devices; Bluefy may not.
+  navigator.bluetooth.getDevices().then(devs => {
+    devs.forEach(dev => {
+      const light = lights.find(l => l.filters.some(f => (dev.name || '').startsWith(f.namePrefix)));
+      if (!light || light.device) return;
+      light.setDevice(dev);
+      render(light);
+      log(`${light.label}: remembered ${dev.name}; trying to reconnect`);
+      light.connect().catch(e => log(`${light.label}: auto-connect skipped: ${e.message}`));
+    });
+  }).catch(() => {});
+}
+
+// Disconnect cleanly when the page goes away so the lights accept the next connection quickly.
+window.addEventListener('pagehide', () => lights.forEach(l => { l.wantConnected = false; if (l.device && l.device.gatt.connected) l.device.gatt.disconnect(); }));
+</script>
+</body>
+</html>
