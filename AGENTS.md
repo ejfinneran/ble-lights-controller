@@ -45,7 +45,7 @@ Never present a protocol as working unless someone actually saw the light react.
 There's no automated test suite, and real verification needs the hardware.
 
 - Desktop: run `python3 -m http.server 8000` and open `http://localhost:8000` in Chrome. Bluetooth has to be on and the lights in range (the garage laptop `hpgarage` can reach both).
-- Phone: deploy to the HTTPS host and open it in Bluefy.
+- Phone: push to `main`. The Pages workflow publishes `index.html` to https://ejfinneran.github.io/ble-lights-controller/ (only `index.html` is deployed, so if you add another file the page needs, add it to the "Assemble site" step). Then open that URL in Bluefy.
 - Use the in-page **Log** panel to check the exact bytes sent.
 - Without hardware, at least load the page and check the browser console for errors. When `navigator.bluetooth` is missing, the page should show the "no Web Bluetooth" banner and still render.
 

@@ -29,7 +29,7 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-**On an iPhone:** host the repo on any static HTTPS host (GitHub Pages, Netlify or Cloudflare Pages) and open the URL in Bluefy. Safari and the other iOS browsers can't do this, because they have no Web Bluetooth.
+**On an iPhone:** open **https://ejfinneran.github.io/ble-lights-controller/** in Bluefy. Every push to `main` redeploys it through GitHub Actions (`.github/workflows/pages.yml`). Safari and the other iOS browsers can't do this, because they have no Web Bluetooth.
 
 The first time, tap **Connect** on each card and choose the light in the picker. After that, **Reconnect** connects without the picker for the rest of that page session.
 
@@ -58,4 +58,5 @@ Once a setting works, change its default in `defaultSettings()` in `index.html` 
 index.html     the app (HTML, CSS and JS inline)
 docs/SPEC.md   design spec: devices, GATT UUIDs, byte protocols, options considered
 AGENTS.md      notes for coding agents and contributors
+.github/workflows/pages.yml   deploys index.html to GitHub Pages
 ```
